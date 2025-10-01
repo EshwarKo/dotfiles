@@ -1,6 +1,5 @@
 -- lua/plugins/completion.lua
 return {
-  -- Completion engine + sources + snippets
   {
     "hrsh7th/nvim-cmp",
     event = { "InsertEnter", "CmdlineEnter" },
@@ -16,17 +15,15 @@ return {
       "hrsh7th/cmp-nvim-lsp-signature-help",
     },
     config = function()
-      -- Popup behavior
       vim.opt.completeopt = { "menu", "menuone", "noselect" }
 
-      -- Load community + VSCode-style snippets
       require("luasnip.loaders.from_vscode").lazy_load()
 
-      local cmp      = require("cmp")
-      local luasnip  = require("luasnip")
-      local lspkind  = require("lspkind")
+      local cmp     = require("cmp")
+      local luasnip = require("luasnip")
+      local lspkind = require("lspkind")
 
-      -- Optional: completion on / and : commandline
+      -- Commandline completion
       cmp.setup.cmdline("/", {
         mapping = cmp.mapping.preset.cmdline(),
         sources = { { name = "buffer" } },
@@ -36,7 +33,7 @@ return {
         sources = { { name = "path" }, { name = "cmdline" } },
       })
 
-      -- Main insert-mode completion
+      -- Insert mode completion
       cmp.setup({
         snippet = {
           expand = function(args) luasnip.lsp_expand(args.body) end,
@@ -66,29 +63,15 @@ return {
             end
           end, { "i", "s" }),
         }),
-        sources = cmp.config.sources(
-          {
-            { name = "nvim_lsp" },
-            { name = "nvim_lsp_signature_help" },
-            { name = "luasnip" },
-          },
-          {
-            { name = "path" },
-            { name = "buffer" },
-          }
-        ),
+        sources = cmp.config.sources({
+          { name = "nvim_lsp" },
+          { name = "nvim_lsp_signature_help" },
+          { name = "luasnip" },
+        }, {
+          { name = "path" },
+          { name = "buffer" },
+        }),
       })
-    end,
-  },
-
-  -- Tell all LSP servers about cmp's extra capabilities (new API style)
-  {
-    "neovim/nvim-lspconfig",
-    lazy = false,
-    config = function()
-      local caps = require("cmp_nvim_lsp").default_capabilities()
-      -- Apply to every server you define via vim.lsp.config("server", {...})
-      vim.lsp.config("*", { capabilities = caps })
     end,
   },
 }
