@@ -95,6 +95,11 @@ BASE_ARGS=(
 
 [[ -n "$TIMEOUT" ]] && BASE_ARGS+=(-e "CLAUDE_SANDBOX_TIMEOUT=${TIMEOUT}")
 
+# ── SSH agent forwarding (for git push inside container) ─────────
+if [[ -n "${SSH_AUTH_SOCK:-}" ]]; then
+  BASE_ARGS+=(-v "${SSH_AUTH_SOCK}:/ssh-agent:ro" -e "SSH_AUTH_SOCK=/ssh-agent")
+fi
+
 # ── Mode-specific args ───────────────────────────────────────────
 case "$MODE" in
   interactive)

@@ -25,9 +25,13 @@ x-common: &common
     context: ../..
     dockerfile: claude/docker/Dockerfile
   volumes:
-    - workspace:/workspace
+    - ${CLAUDE_SANDBOX_WORKSPACE:-./../..}:/workspace
     - claude-config:/home/claude/.claude
     - bash-history:/commandhistory
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=2g
+    - /run:rw,noexec,nosuid,size=64m
   environment:
     - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY}
     - GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-}
@@ -37,6 +41,7 @@ x-common: &common
   working_dir: /workspace
   stdin_open: true
   tty: true
+  pids_limit: 512
   # Resource limits: prevent runaway containers
   deploy:
     resources:
@@ -154,12 +159,6 @@ services:
       - bash-history:/commandhistory
 
 volumes:
-  workspace:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${PWD:-.}
   claude-config:
   worker1-config:
   worker2-config:
