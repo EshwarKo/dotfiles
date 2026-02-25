@@ -103,6 +103,16 @@ claude-clean() {
 # Alias for backwards compat
 claude-worktree-clean() { claude-clean; }
 
+# ── Containerized Sessions ─────────────────────────────────────
+# Sandbox launcher (Docker-based isolation with firewall)
+alias csb='bash ~/dotfiles/claude/docker/claude-sandbox.sh'
+alias csb-isolated='bash ~/dotfiles/claude/docker/claude-sandbox.sh --isolated'
+alias csb-headless='bash ~/dotfiles/claude/docker/claude-sandbox.sh --headless'
+
+# Docker compose shortcuts (from repo root)
+alias csb-build='docker build -t claude-sandbox -f ~/dotfiles/claude/docker/Dockerfile ~/dotfiles'
+alias csb-up='docker compose -f ~/dotfiles/claude/docker/docker-compose.yml run --rm claude-interactive'
+
 # ── Utilities ────────────────────────────────────────────────────
 alias rp='realpath'
 export EDITOR="${EDITOR:-nvim}"

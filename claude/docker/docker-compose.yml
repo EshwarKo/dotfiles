@@ -1,21 +1,167 @@
-# Claude Code containerized workers
-# Usage:
-#   docker compose -f claude/docker/docker-compose.yml up claude-worker
-#   docker compose -f claude/docker/docker-compose.yml run --rm claude-worker
+# Claude Code containerized sessions
+#
+# Profiles:
+#   Interactive (firewalled, full permissions):
+#     docker compose run --rm claude-interactive
+#
+#   Headless (firewalled, pass a prompt):
+#     docker compose run --rm claude-headless -p "implement feature X"
+#
+#   Isolated (no network at all - safest):
+#     docker compose run --rm claude-isolated
+#
+#   Multi-agent workers:
+#     docker compose up claude-worker-1 claude-worker-2 claude-worker-3
+#
+# Environment variables (set in .env or export):
+#   ANTHROPIC_API_KEY  - required
+#   GIT_AUTHOR_NAME    - forwarded to container
+#   GIT_AUTHOR_EMAIL   - forwarded to container
+#   CLAUDE_SANDBOX_TIMEOUT    - kill after N seconds (default: none)
+#   CLAUDE_SANDBOX_EXTRA_DOMAINS - space-separated extra allowed domains
+
+x-common: &common
+  build:
+    context: ../..
+    dockerfile: claude/docker/Dockerfile
+  volumes:
+    - workspace:/workspace
+    - claude-config:/home/claude/.claude
+    - bash-history:/commandhistory
+  environment:
+    - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY}
+    - GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-}
+    - GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-}
+    - CLAUDE_SANDBOX_EXTRA_DOMAINS=${CLAUDE_SANDBOX_EXTRA_DOMAINS:-}
+    - CLAUDE_SANDBOX_TIMEOUT=${CLAUDE_SANDBOX_TIMEOUT:-}
+  working_dir: /workspace
+  stdin_open: true
+  tty: true
+  # Resource limits: prevent runaway containers
+  deploy:
+    resources:
+      limits:
+        cpus: "4"
+        memory: 8G
+      reservations:
+        cpus: "1"
+        memory: 2G
 
 services:
-  claude-worker:
-    build:
-      context: ../..
-      dockerfile: claude/docker/Dockerfile
-    volumes:
-      - ../../:/workspace
-      - claude-cache:/root/.claude
+  # ── Interactive: firewalled, full permissions, terminal attached ─
+  # Use for: normal development with full autonomy
+  claude-interactive:
+    <<: *common
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    command: ["claude", "--dangerously-skip-permissions"]
+
+  # ── Headless: firewalled, accepts prompt via args ──────────────
+  # Use for: scripted/automated tasks, ralph loops, CI
+  # Example: docker compose run --rm claude-headless -p "fix all linting errors"
+  claude-headless:
+    <<: *common
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stdin_open: false
+    tty: false
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    stdin_open: true
-    tty: true
-    working_dir: /workspace
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY}
+      - GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-}
+      - GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-}
+      - CLAUDE_SANDBOX_EXTRA_DOMAINS=${CLAUDE_SANDBOX_EXTRA_DOMAINS:-}
+      - CLAUDE_SANDBOX_TIMEOUT=${CLAUDE_SANDBOX_TIMEOUT:-3600}
+    command: ["claude", "--dangerously-skip-permissions"]
+
+  # ── Isolated: no network at all (maximum safety) ───────────────
+  # Use for: untrusted repos, risky experiments, overnight ralph loops
+  # Cannot git push, npm install, or make API calls (except Claude API
+  # which is proxied through the host - see note below).
+  #
+  # NOTE: Claude Code itself needs network to call the API. For true
+  # --network=none, you'd need a local proxy or the Claude SDK.
+  # This profile uses the firewall with a minimal allowlist instead.
+  claude-isolated:
+    <<: *common
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY}
+      - GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-}
+      - GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-}
+      - CLAUDE_SANDBOX_EXTRA_DOMAINS=
+      - CLAUDE_SANDBOX_TIMEOUT=${CLAUDE_SANDBOX_TIMEOUT:-7200}
+    command: ["claude", "--dangerously-skip-permissions"]
+
+  # ── Multi-agent workers (for parallel task execution) ──────────
+  # Each worker gets its own config volume but shares workspace.
+  # Use with ralph loops or agent teams.
+  claude-worker-1:
+    <<: *common
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - workspace:/workspace
+      - worker1-config:/home/claude/.claude
+      - bash-history:/commandhistory
+
+  claude-worker-2:
+    <<: *common
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - workspace:/workspace
+      - worker2-config:/home/claude/.claude
+      - bash-history:/commandhistory
+
+  claude-worker-3:
+    <<: *common
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - workspace:/workspace
+      - worker3-config:/home/claude/.claude
+      - bash-history:/commandhistory
 
 volumes:
-  claude-cache:
+  workspace:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD:-.}
+  claude-config:
+  worker1-config:
+  worker2-config:
+  worker3-config:
+  bash-history:

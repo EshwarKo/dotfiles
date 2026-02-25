@@ -288,28 +288,149 @@ Standalone agent that continuously:
 
 ---
 
-## Phase 6: Docker Isolation
+## Phase 6: Docker Isolation & Sandboxing
 
-**Goal:** Safe environment for autonomous/risky operations.
+**Goal:** Containerized sessions where `--dangerously-skip-permissions` is
+truly safe. Multiple isolation layers prevent damage even if Claude goes rogue.
 
-### Container (`claude/docker/Dockerfile`)
+### Security Layers (Defense in Depth)
 
-- Node.js + Claude Code + git + gh CLI + tmux
-- `--dangerously-skip-permissions` safe inside container
-- Volume-mount workspace for file access
+```
+┌─────────────────────────────────────────────────────┐
+│  Layer 1: Docker container boundary                 │
+│    - Filesystem isolated from host                  │
+│    - Non-root user (claude:1000)                    │
+│    - Capabilities dropped (cap-drop=ALL)            │
+│    - no-new-privileges, read-only rootfs            │
+│    - Resource limits (CPU, memory, PIDs)            │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  Layer 2: iptables firewall (init-firewall.sh)│  │
+│  │    - Default-deny outbound policy             │  │
+│  │    - Allowlist: Claude API, GitHub, npm, pypi │  │
+│  │    - DNS + SSH + localhost permitted           │  │
+│  │    - All other traffic REJECTED               │  │
+│  │    - Verified at startup                      │  │
+│  │                                               │  │
+│  │  ┌─────────────────────────────────────────┐  │  │
+│  │  │  Layer 3: Claude native sandbox         │  │  │
+│  │  │    - bubblewrap on Linux                │  │  │
+│  │  │    - Filesystem: /workspace only        │  │  │
+│  │  │    - Network: proxy-filtered domains    │  │  │
+│  │  │    - All child processes inherit        │  │  │
+│  │  └─────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────┘
+```
 
-### Use Cases
+### Container Image (`claude/docker/Dockerfile`)
 
-- Long-running ralph loops (hours/overnight)
-- Exploratory coding with full autonomy
-- Web research via fallback tools
-- CI reproduction
+Based on Anthropic's official devcontainer reference. Key features:
 
-### Safety: Always use `--network none` for unattended runs
+- **node:22-slim** base + Claude Code CLI
+- **Non-root user** (`claude:1000`) - no root in container
+- **bubblewrap + socat** - Claude Code's native Linux sandbox works
+- **iptables + ipset** - domain-level firewall allowlist
+- **Entrypoint** handles firewall init, git identity, timeout enforcement
+- **`--dangerously-skip-permissions`** as default CMD (safe inside container)
 
+### Firewall (`claude/docker/init-firewall.sh`)
+
+Allowlist-based iptables firewall. Only approved domains are reachable:
+
+| Domain | Purpose |
+|--------|---------|
+| `api.anthropic.com` | Claude API |
+| `github.com` + GitHub CIDRs | Git push/pull |
+| `registry.npmjs.org` | npm install |
+| `pypi.org` | pip install |
+| `sentry.io`, `statsig.com` | Claude telemetry |
+| `localhost`, host network | Docker <-> host |
+
+Add custom domains: `CLAUDE_SANDBOX_EXTRA_DOMAINS="api.example.com"`
+
+### Usage Modes
+
+**Interactive** (firewalled, full permissions, terminal):
 ```bash
-docker run -it --rm --network none \
-  -v $(pwd):/workspace claude-worker
+csb                     # alias
+# or
+claude-sandbox.sh --interactive
+```
+
+**Headless** (firewalled, scripted, 1h timeout):
+```bash
+csb-headless -- -p "implement auth module per spec.md"
+# or
+claude-sandbox.sh --headless --timeout 3600 -- -p "fix all tests"
+```
+
+**Isolated** (Claude API only, no GitHub/npm, 2h timeout):
+```bash
+csb-isolated
+# or
+claude-sandbox.sh --isolated
+```
+
+**Multi-worker** (N parallel containers):
+```bash
+claude-sandbox.sh --workers 3 -- -p "implement features from spec"
+```
+
+**Docker Compose**:
+```bash
+docker compose -f claude/docker/docker-compose.yml run --rm claude-interactive
+docker compose -f claude/docker/docker-compose.yml run --rm claude-headless -p "prompt"
+docker compose -f claude/docker/docker-compose.yml up claude-worker-1 claude-worker-2
+```
+
+### Environment Variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `ANTHROPIC_API_KEY` | (required) | Claude API authentication |
+| `GIT_AUTHOR_NAME` | from git config | Git commits inside container |
+| `GIT_AUTHOR_EMAIL` | from git config | Git commits inside container |
+| `CLAUDE_SANDBOX_TIMEOUT` | none | Kill container after N seconds |
+| `CLAUDE_SANDBOX_EXTRA_DOMAINS` | none | Additional allowed domains |
+| `CLAUDE_SANDBOX_FIREWALL` | true | Set false to skip firewall |
+
+### Resource Limits
+
+| Resource | Limit |
+|----------|-------|
+| CPU | 4 cores |
+| Memory | 8 GB |
+| PIDs | 512 |
+| /tmp | 2 GB tmpfs |
+| /home | 1 GB tmpfs |
+
+### devcontainer.json
+
+VS Code Remote Containers integration at `claude/docker/.devcontainer/`.
+Opens the project in a fully isolated container with the firewall active.
+
+### Native Sandbox (settings-template.json)
+
+For non-Docker usage, Claude Code's built-in sandbox is configured:
+- `sandbox.enabled: true` - bubblewrap on Linux, Seatbelt on macOS
+- `sandbox.autoAllowBashIfSandboxed: true` - no prompts inside sandbox
+- Domain allowlist: GitHub, npm, pypi, Claude API
+- `excludedCommands: ["docker"]` - Docker can't run inside sandbox
+- File deny rules: `.env`, `.ssh`, `.aws`, `.bashrc`, `.zshrc`
+
+### Docker Files
+
+```
+claude/docker/
+  Dockerfile              # Security-hardened image
+  docker-compose.yml      # Interactive, headless, isolated, multi-agent
+  entrypoint.sh           # Firewall init, git config, timeout
+  init-firewall.sh        # iptables domain allowlist
+  claude-sandbox.sh       # One-command launcher wrapper
+  .dockerignore           # Prevents secrets from entering build context
+  .devcontainer/
+    devcontainer.json     # VS Code Remote Containers integration
 ```
 
 ---
@@ -394,7 +515,16 @@ claude/
     ralph-stop-hook.sh          # Ralph loop continuation
     teammate-idle.sh            # Keep teammates working
     task-completed.sh           # Test gate before completion
+  agents/
+    test-agent.md               # Custom agent: QA role
+    review-agent.md             # Custom agent: code review role
   docker/
-    Dockerfile                  # Isolated Claude container
-    docker-compose.yml          # Container orchestration
+    Dockerfile                  # Security-hardened container image
+    docker-compose.yml          # Multi-profile container orchestration
+    entrypoint.sh               # Firewall, git config, timeout
+    init-firewall.sh            # iptables domain allowlist
+    claude-sandbox.sh           # One-command sandbox launcher
+    .dockerignore               # Prevent secret leakage into build
+    .devcontainer/
+      devcontainer.json         # VS Code Remote Containers
 ```

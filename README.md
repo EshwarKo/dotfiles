@@ -37,6 +37,11 @@ claude-multi 4
 
 # Worktree-isolated Claude session
 claude-worktree feature-auth
+
+# Containerized session (Docker, firewalled, full permissions)
+csb                                       # interactive
+csb-isolated                              # Claude API only, no GitHub/npm
+csb-headless -- -p "fix all lint errors"  # scripted, 1h timeout
 ```
 
 ## Tmux Keybindings

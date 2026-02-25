@@ -10,8 +10,9 @@ Personal dev environment: nvim, tmux, Claude Code agent orchestration.
   - `scripts/` - ralph-loop, claude-team, dashboard, test-agent, worktree helper
   - `skills/` - elicit, verify, spec-implement
   - `hooks/` - ralph-stop-hook, teammate-idle, task-completed
-  - `docker/` - containerized Claude sessions
-  - `settings-template.json` - copy to ~/.claude/settings.json
+  - `docker/` - containerized sessions (Dockerfile, firewall, devcontainer, sandbox launcher)
+  - `agents/` - custom agent definitions (test-agent, review-agent)
+  - `settings-template.json` - copy to ~/.claude/settings.json (sandbox + hooks)
 
 ## Agent Team Conventions
 
