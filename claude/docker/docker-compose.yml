@@ -1,0 +1,21 @@
+# Claude Code containerized workers
+# Usage:
+#   docker compose -f claude/docker/docker-compose.yml up claude-worker
+#   docker compose -f claude/docker/docker-compose.yml run --rm claude-worker
+
+services:
+  claude-worker:
+    build:
+      context: ../..
+      dockerfile: claude/docker/Dockerfile
+    volumes:
+      - ../../:/workspace
+      - claude-cache:/root/.claude
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+
+volumes:
+  claude-cache:
