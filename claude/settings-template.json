@@ -1,0 +1,73 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "ENABLE_TOOL_SEARCH": "true"
+  },
+  "permissions": {
+    "allow": ["Read(~/.claude)"],
+    "deny": [
+      "Read(.envrc)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.zshrc)",
+      "Edit(~/.profile)"
+    ]
+  },
+  "teammateMode": "auto",
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": true,
+    "excludedCommands": ["docker", "docker-compose"],
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "*.github.com",
+        "api.anthropic.com",
+        "registry.npmjs.org",
+        "*.npmjs.org",
+        "pypi.org",
+        "files.pythonhosted.org"
+      ],
+      "allowUnixSockets": [],
+      "allowAllUnixSockets": false,
+      "allowLocalBinding": true
+    },
+    "enableWeakerNestedSandbox": false
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/dotfiles/claude/hooks/ralph-stop-hook.sh"
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/dotfiles/claude/hooks/teammate-idle.sh"
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/dotfiles/claude/hooks/task-completed.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

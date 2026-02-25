@@ -1,0 +1,32 @@
+# Secrets - NEVER copy into container
+**/.env
+**/.env.*
+**/credentials*
+**/*.pem
+**/*.key
+**/id_rsa*
+**/id_ed25519*
+**/.ssh/
+**/.aws/
+**/.gcloud/
+**/.azure/
+
+# Git internals
+**/.git/
+
+# Node
+**/node_modules/
+**/dist/
+**/build/
+
+# OS
+**/.DS_Store
+**/Thumbs.db
+
+# Editor
+**/.vscode/
+**/.idea/
+
+# Docker context (don't recursively include docker files)
+**/docker-compose*.yml
+**/*.dockerfile
