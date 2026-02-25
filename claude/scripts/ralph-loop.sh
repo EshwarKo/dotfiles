@@ -165,7 +165,7 @@ if [[ -f "$DASHBOARD_SCRIPT" ]]; then
     "bash '${DASHBOARD_SCRIPT}'" Enter
 else
   tmux send-keys -t "${SESSION_NAME}:0.$((NUM_WORKERS + 1))" \
-    "watch -n 5 'echo \"Ralph Loop: ${SESSION_NAME}\"; echo \"State:\"; cat \"${LOOP_STATE_FILE}\" 2>/dev/null | python3 -m json.tool 2>/dev/null || cat \"${LOOP_STATE_FILE}\"'" Enter
+    "watch -n 5 'echo \"Ralph Loop: ${SESSION_NAME}\"; echo \"State:\"; jq . \"${LOOP_STATE_FILE}\" 2>/dev/null || cat \"${LOOP_STATE_FILE}\" 2>/dev/null'" Enter
 fi
 
 # Worker panes get labels (agents will be spawned by the lead via agent teams)

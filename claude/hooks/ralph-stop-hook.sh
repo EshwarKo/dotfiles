@@ -32,7 +32,7 @@ MAX_ITERS="${RALPH_MAX_ITERS:-20}"
 COMPLETION_PROMISE="${RALPH_COMPLETION_PROMISE:-RALPH_DONE}"
 
 # Use a stable identifier based on session name or repo path (not $$, which changes per invocation)
-RALPH_ID="${RALPH_SESSION_ID:-$(git rev-parse --show-toplevel 2>/dev/null | md5sum | cut -c1-8)}"
+RALPH_ID="${RALPH_SESSION_ID:-$(git rev-parse --show-toplevel 2>/dev/null | (md5sum 2>/dev/null || md5) | cut -c1-8)}"
 ITER_FILE="/tmp/ralph-iter-${RALPH_ID}"
 
 # Track iteration count

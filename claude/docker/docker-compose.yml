@@ -32,6 +32,7 @@ x-common: &common
   tmpfs:
     - /tmp:rw,noexec,nosuid,size=2g
     - /run:rw,noexec,nosuid,size=64m
+    - /home/claude:rw,nosuid,size=1g
   environment:
     - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY}
     - GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-}
@@ -126,7 +127,7 @@ services:
     security_opt:
       - no-new-privileges:true
     volumes:
-      - workspace:/workspace
+      - ${CLAUDE_SANDBOX_WORKSPACE:-./../..}:/workspace
       - worker1-config:/home/claude/.claude
       - bash-history:/commandhistory
 
@@ -140,7 +141,7 @@ services:
     security_opt:
       - no-new-privileges:true
     volumes:
-      - workspace:/workspace
+      - ${CLAUDE_SANDBOX_WORKSPACE:-./../..}:/workspace
       - worker2-config:/home/claude/.claude
       - bash-history:/commandhistory
 
@@ -154,7 +155,7 @@ services:
     security_opt:
       - no-new-privileges:true
     volumes:
-      - workspace:/workspace
+      - ${CLAUDE_SANDBOX_WORKSPACE:-./../..}:/workspace
       - worker3-config:/home/claude/.claude
       - bash-history:/commandhistory
 

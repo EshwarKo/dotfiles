@@ -8,7 +8,7 @@ set -euo pipefail
 # Only attempt firewall setup if we have NET_ADMIN capability.
 # Containers run with --network=none skip this entirely.
 if [[ "${CLAUDE_SANDBOX_FIREWALL:-true}" == "true" ]]; then
-  if capsh --print 2>/dev/null | grep -q "cap_net_admin" 2>/dev/null; then
+  if iptables -L -n >/dev/null 2>&1; then
     echo "[sandbox] Initializing firewall allowlist..."
     sudo /usr/local/bin/init-firewall.sh || {
       echo "[sandbox] WARNING: Firewall setup failed. Continuing without network restrictions."

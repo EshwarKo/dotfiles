@@ -1,10 +1,9 @@
 -- lua/plugins/mason.lua
+-- Mason is set up and configured in lsp.lua (which depends on it).
+-- This file just ensures the registry stays up to date.
 return {
-  "williamboman/mason.nvim",
+  "mason-org/mason.nvim",
   lazy = false,
-  build = ":MasonUpdate", -- keep registry up to date
-  config = function()
-    require("mason").setup()
-  end,
+  build = ":MasonUpdate",
 }
 

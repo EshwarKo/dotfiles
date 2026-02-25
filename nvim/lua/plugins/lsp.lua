@@ -13,7 +13,7 @@ return {
     require("mason-lspconfig").setup({
       ensure_installed = { "lua_ls", "pyright", "clangd", "hls", "texlab" },
       -- With v2, this plugin’s scope is slim: install + (optionally) auto-enable
-      -- It relies on the native API under the hood. :contentReference[oaicite:1]{index=1}
+      -- It relies on the native vim.lsp API under the hood.
     })
 
     -- 2) Capabilities from nvim-cmp (pass into vim.lsp.config)
@@ -35,7 +35,7 @@ return {
 
     -- 4) Define/extend server configs with the NEW native API (0.11+)
     --    Neovim merges these with shipped defaults. Then enable them.
-    --    Docs: :h news-0.11, :h lsp, and nvim-lspconfig README. :contentReference[oaicite:2]{index=2}
+    --    Docs: :h news-0.11, :h lsp, and nvim-lspconfig README.
 
     -- Haskell (HLS)
     vim.lsp.config("hls", {

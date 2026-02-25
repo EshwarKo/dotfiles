@@ -100,14 +100,7 @@ render() {
       local team_name
       team_name=$(basename "$(dirname "$config")")
       local members
-      members=$(python3 -c "
-import json,sys
-try:
-  c=json.load(open('$config'))
-  for m in c.get('members',[]):
-    print(f\"    {m.get('name','?'):20s} type={m.get('agentType','?')}\")
-except: pass
-" 2>/dev/null || echo "    (could not parse)")
+      members=$(jq -r '.members[]? | "    \(.name // "?")  type=\(.agentType // "?")"' "$config" 2>/dev/null || echo "    (could not parse)")
       echo -e "  ${M}Team: ${team_name}${X}"
       echo "$members"
 
@@ -118,7 +111,7 @@ except: pass
         for tf in "$task_dir"/*.json; do
           [[ -f "$tf" ]] || continue
           local st
-          st=$(python3 -c "import json; print(json.load(open('$tf')).get('status','?'))" 2>/dev/null || echo "?")
+          st=$(jq -r '.status // "?"' "$tf" 2>/dev/null || echo "?")
           case "$st" in
             pending) pending=$((pending+1)) ;;
             in_progress) progress=$((progress+1)) ;;
@@ -149,16 +142,8 @@ except: pass
     for state_file in "$ralph_dir"/*/loop-state.json; do
       [[ -f "$state_file" ]] || continue
       ralph_found=1
-      python3 -c "
-import json
-s=json.load(open('$state_file'))
-name=s.get('session','?')
-status=s.get('status','?')
-loops=s.get('loop_count',0)
-total=s.get('tasks_total',0)
-done=s.get('tasks_completed',0)
-print(f'  {name:24s} status={status}  loops={loops}  tasks={done}/{total}')
-" 2>/dev/null || echo "  (parse error: $state_file)"
+      jq -r '"  \(.session // "?")  status=\(.status // "?")  loops=\(.loop_count // 0)  tasks=\(.tasks_completed // 0)/\(.tasks_total // 0)"' \
+        "$state_file" 2>/dev/null || echo "  (parse error: $state_file)"
     done
   fi
 
