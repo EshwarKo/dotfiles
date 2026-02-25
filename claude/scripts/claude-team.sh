@@ -110,9 +110,13 @@ if [[ -n "$LEAD_PROMPT" ]]; then
   PROMPT="${PROMPT} Additional instructions: ${LEAD_PROMPT}"
 fi
 
+# --- Write prompt to temp file (avoids quoting issues in tmux send-keys) ---
+PROMPT_FILE="/tmp/claude-team-prompt-${SESSION_NAME}.txt"
+echo "$PROMPT" > "$PROMPT_FILE"
+
 # --- Launch lead ---
 tmux send-keys -t "${SESSION_NAME}:0.0" \
-  "cd '${REPO_ROOT}' && claude --teammate-mode tmux -p '${PROMPT}'" Enter
+  "cd '${REPO_ROOT}' && claude --teammate-mode tmux -p \"\$(cat '${PROMPT_FILE}')\"" Enter
 
 # --- Label worker panes ---
 for ((i=0; i<NUM_WORKERS; i++)); do
@@ -138,7 +142,9 @@ fi
 if [[ "$ADD_DASHBOARD" == "true" ]]; then
   DASH_SCRIPT="$(dirname "$(realpath "$0")")/claude-dashboard.sh"
   # Dashboard is the last pane on the left side
-  DASH_PANE_IDX=$((NUM_WORKERS + ($ADD_TEST_AGENT == "true" ? 2 : 1)))
+  DASH_OFFSET=1
+  [[ "$ADD_TEST_AGENT" == "true" ]] && DASH_OFFSET=2
+  DASH_PANE_IDX=$((NUM_WORKERS + DASH_OFFSET))
   if [[ -f "$DASH_SCRIPT" ]]; then
     tmux send-keys -t "${SESSION_NAME}:0.${DASH_PANE_IDX}" \
       "bash '${DASH_SCRIPT}'" Enter

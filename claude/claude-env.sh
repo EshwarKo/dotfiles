@@ -75,14 +75,33 @@ claude-worktree() {
   tmux new-window -n "wt:${branch}" "cd '${wt_dir}' && claude"
 }
 
-# Clean up all worktrees created by claude tools
-claude-worktree-clean() {
-  git worktree list | grep 'wt-' | awk '{print $1}' | while read -r wt; do
-    echo "Removing worktree: $wt"
+# Clean up worktrees, tmux sessions, and temp files from claude tools
+claude-clean() {
+  echo "Cleaning up claude agent artifacts..."
+
+  # Remove worktrees (matches wt-*, ralph-wt-*)
+  local cleaned=0
+  git worktree list 2>/dev/null | grep -E 'wt-|ralph-wt-' | awk '{print $1}' | while read -r wt; do
+    echo "  Removing worktree: $wt"
     git worktree remove "$wt" --force 2>/dev/null || true
+    cleaned=$((cleaned + 1))
   done
-  git worktree prune
+  git worktree prune 2>/dev/null
+
+  # Kill tmux sessions matching team-* or ralph-*
+  tmux list-sessions -F '#{session_name}' 2>/dev/null | grep -E '^(team-|ralph-|multi-)' | while read -r sess; do
+    echo "  Killing tmux session: $sess"
+    tmux kill-session -t "$sess" 2>/dev/null || true
+  done
+
+  # Clean temp files
+  rm -f /tmp/ralph-iter-* /tmp/claude-team-prompt-*.txt 2>/dev/null
+
+  echo "Done."
 }
+
+# Alias for backwards compat
+claude-worktree-clean() { claude-clean; }
 
 # ── Utilities ────────────────────────────────────────────────────
 alias rp='realpath'

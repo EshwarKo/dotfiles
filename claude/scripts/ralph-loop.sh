@@ -146,10 +146,17 @@ PROMPT_EOF
 
 LEAD_PROMPT="${LEAD_PROMPT} ${SPEC_FILE}"
 
+# --- Export ralph loop env vars so the stop hook knows we're in a loop ---
+RALPH_ENV="RALPH_ACTIVE=1 RALPH_SESSION_ID='${SESSION_NAME}' RALPH_SPEC_FILE='${SPEC_FILE}' RALPH_PROGRESS_FILE='${REPO_ROOT}/progress.json'"
+
+# --- Write prompt to temp file (avoids quoting issues in tmux send-keys) ---
+PROMPT_FILE="${TEAM_DIR}/lead-prompt.txt"
+echo "$LEAD_PROMPT" > "$PROMPT_FILE"
+
 # --- Launch agents ---
 # Lead agent (left pane)
 tmux send-keys -t "${SESSION_NAME}:0.0" \
-  "cd '${REPO_ROOT}' && claude --teammate-mode tmux -p '${LEAD_PROMPT}'" Enter
+  "cd '${REPO_ROOT}' && ${RALPH_ENV} claude --teammate-mode tmux -p \"\$(cat '${PROMPT_FILE}')\"" Enter
 
 # Dashboard (bottom-left pane)
 DASHBOARD_SCRIPT="$(dirname "$(realpath "$0")")/claude-dashboard.sh"

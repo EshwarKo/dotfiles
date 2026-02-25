@@ -13,6 +13,8 @@
 #     }]
 #   }
 
+set -euo pipefail
+
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 # Check if tests exist and pass before allowing task completion
@@ -32,7 +34,11 @@ fi
 
 if [[ -n "$TEST_CMD" ]]; then
   echo "Running tests before marking task complete: ${TEST_CMD}"
-  if ! (cd "$REPO_ROOT" && eval "$TEST_CMD" 2>&1 | tail -20); then
+  # Capture test output; check exit code of the test command, not tail
+  TEST_OUTPUT=$(cd "$REPO_ROOT" && eval "$TEST_CMD" 2>&1) || TEST_EXIT=$?
+  TEST_EXIT="${TEST_EXIT:-0}"
+  echo "$TEST_OUTPUT" | tail -20
+  if [[ "$TEST_EXIT" -ne 0 ]]; then
     echo "Tests failed. Fix the failing tests before marking this task complete."
     exit 2  # Block completion
   fi

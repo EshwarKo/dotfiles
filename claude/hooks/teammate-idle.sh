@@ -13,6 +13,8 @@
 #     }]
 #   }
 
+set -euo pipefail
+
 # Check if there are still pending tasks in the team task list
 TEAM_DIR="${HOME}/.claude/tasks"
 PENDING=0
@@ -20,7 +22,7 @@ PENDING=0
 if [[ -d "$TEAM_DIR" ]]; then
   for task_file in "$TEAM_DIR"/*/*.json; do
     [[ -f "$task_file" ]] || continue
-    if grep -q '"status":\s*"pending"' "$task_file" 2>/dev/null; then
+    if grep -qE '"status":[[:space:]]*"pending"' "$task_file" 2>/dev/null; then
       PENDING=$((PENDING + 1))
     fi
   done

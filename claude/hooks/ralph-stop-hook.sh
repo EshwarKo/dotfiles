@@ -21,11 +21,19 @@
 
 set -euo pipefail
 
+# Only run in ralph loop context (env var set by ralph-loop.sh)
+if [[ -z "${RALPH_ACTIVE:-}" ]]; then
+  exit 0  # Not a ralph loop, allow normal exit
+fi
+
 SPEC_FILE="${RALPH_SPEC_FILE:-}"
 PROGRESS_FILE="${RALPH_PROGRESS_FILE:-./progress.json}"
 MAX_ITERS="${RALPH_MAX_ITERS:-20}"
 COMPLETION_PROMISE="${RALPH_COMPLETION_PROMISE:-RALPH_DONE}"
-ITER_FILE="/tmp/ralph-iter-$$"
+
+# Use a stable identifier based on session name or repo path (not $$, which changes per invocation)
+RALPH_ID="${RALPH_SESSION_ID:-$(git rev-parse --show-toplevel 2>/dev/null | md5sum | cut -c1-8)}"
+ITER_FILE="/tmp/ralph-iter-${RALPH_ID}"
 
 # Track iteration count
 CURRENT_ITER=0
@@ -59,7 +67,7 @@ fi
 
 # Check if progress file shows all tasks complete
 if [[ -f "$PROGRESS_FILE" ]]; then
-  PENDING=$(grep -c '"status":\s*"pending"\|"done":\s*false' "$PROGRESS_FILE" 2>/dev/null || echo "0")
+  PENDING=$(grep -cE '"status":[[:space:]]*"pending"|"done":[[:space:]]*false' "$PROGRESS_FILE" 2>/dev/null || echo "0")
   if [[ "$PENDING" == "0" ]]; then
     # All tasks are done but run tests one more time
     echo "All tasks marked complete. Running final verification..."
