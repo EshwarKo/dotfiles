@@ -23,4 +23,6 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
+
 require("config.lazy")
+require("latex_project").setup()

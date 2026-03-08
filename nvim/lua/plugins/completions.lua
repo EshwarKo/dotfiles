@@ -17,10 +17,38 @@ return {
     config = function()
       vim.opt.completeopt = { "menu", "menuone", "noselect" }
 
+      -- LuaSnip base config (optional but nice)
+      local luasnip = require("luasnip")
+      luasnip.config.set_config({
+        history = true,
+        updateevents = "TextChanged,TextChangedI",
+        enable_autosnippets = true,
+      })
+
+      -- Load community VSCode-style snippets
       require("luasnip.loaders.from_vscode").lazy_load()
 
+      -- 👉 Load YOUR local snippets (Lua files in ~/.config/nvim/snippets)
+      require("luasnip.loaders.from_lua").load({
+        paths = vim.fn.stdpath("config") .. "/snippets",
+      })
+
+      -- Helpers: edit & reload your snippet files quickly
+      vim.api.nvim_create_user_command("EditSnippet", function()
+        local ft = vim.bo.filetype
+        local p = vim.fn.stdpath("config") .. "/snippets/" .. ft .. ".lua"
+        vim.cmd("edit " .. p)
+      end, {})
+
+      vim.api.nvim_create_user_command("ReloadSnippets", function()
+        require("luasnip.loaders.from_lua").load({
+          paths = vim.fn.stdpath("config") .. "/snippets",
+        })
+        require("luasnip.loaders.from_vscode").lazy_load()
+        print("Snippets reloaded")
+      end, {})
+
       local cmp     = require("cmp")
-      local luasnip = require("luasnip")
       local lspkind = require("lspkind")
 
       -- Commandline completion
@@ -35,9 +63,7 @@ return {
 
       -- Insert mode completion
       cmp.setup({
-        snippet = {
-          expand = function(args) luasnip.lsp_expand(args.body) end,
-        },
+        snippet = { expand = function(args) luasnip.lsp_expand(args.body) end },
         formatting = {
           format = lspkind.cmp_format({ mode = "symbol_text", maxwidth = 50, ellipsis_char = "…" }),
         },

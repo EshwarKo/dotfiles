@@ -1,41 +1,49 @@
 -- lua/plugins/lsp.lua
 return {
-  "neovim/nvim-lspconfig",  -- still useful: ships default server configs Neovim can merge
+  "neovim/nvim-lspconfig",
   lazy = false,
   dependencies = {
-    "mason-org/mason.nvim",
-    "mason-org/mason-lspconfig.nvim",
+    -- NOTE: official repos
+    "williamboman/mason.nvim",
+    "williamboman/mason-lspconfig.nvim",
+    "hrsh7th/cmp-nvim-lsp",
   },
 
   config = function()
-    -- 1) Mason installs servers; mason-lspconfig can auto-enable them (native API)
+    -- Mason: install servers, but don't auto-enable (we enable manually below)
     require("mason").setup()
     require("mason-lspconfig").setup({
-      ensure_installed = { "lua_ls", "pyright", "clangd", "hls", "texlab" },
-      -- With v2, this plugin’s scope is slim: install + (optionally) auto-enable
-      -- It relies on the native API under the hood. :contentReference[oaicite:1]{index=1}
+      ensure_installed = { "lua_ls", "pyright", "clangd", "hls", "texlab"},
+      automatic_installation = true,
+      automatic_enable = false,
     })
 
-    -- 2) Capabilities from nvim-cmp (pass into vim.lsp.config)
+    -- nvim-cmp capabilities
     local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
-    -- 3) Buffer-local keymaps on attach
+    -- on_attach: buffer-local keymaps
     local on_attach = function(_, bufnr)
       local map = function(mode, lhs, rhs, desc)
         vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
       end
-      map("n", "gd", vim.lsp.buf.definition,        "Goto Definition")
-      map("n", "gr", vim.lsp.buf.references,        "References")
-      map("n", "K",  vim.lsp.buf.hover,             "Hover Docs")
-      map("n", "<leader>rn", vim.lsp.buf.rename,    "Rename Symbol")
-      map("n", "<leader>ca", vim.lsp.buf.code_action,"Code Action")
-      map("n", "[d", vim.diagnostic.goto_prev,      "Prev Diagnostic")
-      map("n", "]d", vim.diagnostic.goto_next,      "Next Diagnostic")
+      map("n", "gd", vim.lsp.buf.definition,           "Goto Definition")
+      map("n", "gr", vim.lsp.buf.references,           "References")
+      map("n", "K",  vim.lsp.buf.hover,                "Hover Docs")
+      map("n", "<leader>rn", vim.lsp.buf.rename,       "Rename Symbol")
+      map("n", "<leader>ca", vim.lsp.buf.code_action,  "Code Action")
+      map("n", "[d", vim.diagnostic.goto_prev,         "Prev Diagnostic")
+      map("n", "]d", vim.diagnostic.goto_next,         "Next Diagnostic")
+      map("n", "<leader>ld", vim.diagnostic.open_float,"Line Diagnostics")
+      map("n", "<leader>lf", function() vim.lsp.buf.format({ async = false }) end, "Format Buffer")
     end
 
-    -- 4) Define/extend server configs with the NEW native API (0.11+)
-    --    Neovim merges these with shipped defaults. Then enable them.
-    --    Docs: :h news-0.11, :h lsp, and nvim-lspconfig README. :contentReference[oaicite:2]{index=2}
+    -- Metals (Scala) uses nvim-metals, not mason-lspconfig
+    pcall(function()
+      require("plugins.metals-config").setup({
+        capabilities = capabilities,
+        on_attach = on_attach,
+      })
+    end)
 
     -- Haskell (HLS)
     vim.lsp.config("hls", {
@@ -52,6 +60,8 @@ return {
         Lua = {
           runtime = { version = "LuaJIT" },
           diagnostics = { globals = { "vim", "require" } },
+          workspace = { checkThirdParty = false },
+          telemetry = { enable = false },
         },
       },
     })
@@ -68,13 +78,21 @@ return {
       on_attach = on_attach,
     })
 
-    -- LaTeX
+    -- LaTeX (texlab) — tuned for macOS + VimTeX/Skim
     vim.lsp.config("texlab", {
       capabilities = capabilities,
       on_attach = on_attach,
+      settings = {
+        texlab = {
+          build = { onSave = false },  -- let VimTeX handle builds
+          latexFormatter = "latexindent",
+          latexindent = { modifyLineBreaks = true },
+          forwardSearch = { executable = "skim", args = {} },
+        },
+      },
     })
 
-    -- 5) Enable the servers so they auto-attach by filetype
+    -- Enable servers (manual control since automatic_enable=false)
     vim.lsp.enable("hls")
     vim.lsp.enable("lua_ls")
     vim.lsp.enable("pyright")
